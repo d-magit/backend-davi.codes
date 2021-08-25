@@ -56,7 +56,7 @@ app.post('/finances/wwwformhook', async (req, res) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      content: "@everyone",
+      content: "<@!227477384356429824>",
       embeds: [
         {
           color: 16711756,
