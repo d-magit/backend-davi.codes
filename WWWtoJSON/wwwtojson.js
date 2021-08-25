@@ -1,4 +1,5 @@
 const express = require('express');
+const qs = require('querystring');
 const nitroHttpClient = require('nitro-http-client');
 require('dotenv').config();
 
@@ -7,13 +8,26 @@ const app = express();
 const httpClient = new nitroHttpClient.NitroHttpClient();
 app.set('x-powered-by', false)
 
-// Processes and sends webhook. Set to listen for Ko-fi for now
-app.get('/finances/wwwformhook', async (req, res) => {
+// Receives and parse data
+app.use((req, res, next) => {
+  let data = '';
+  req.setEncoding('utf8');
+  req.on('data', (chunk) => data += chunk);
+  req.on('end', () => {
+    try { 
+      req.rawBody = qs.parse(data);
+      req.body =  JSON.parse(req.rawBody.data); 
+    } catch (e) {}
+    next();
+  });
+});
+
+// Processes and sends webhook. Set to listen for Ko-fi for now.
+app.post('/finances/wwwformhook', async (req, res) => {
   var isinvalid = false;
-  var errortype = null;
 
   var donation = null;
-  try { donation = JSON.parse(req.query.data); } 
+  try { donation = req.body; } 
   catch (e)  { isinvalid = true; }
 
   var keys = [];
@@ -29,7 +43,7 @@ app.get('/finances/wwwformhook', async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: `\`[${new Date().toUTCString()}]\` Invalid request on endpoint \`${req.path}\`! \n\`${JSON.stringify(req.query)}\``
+        content: `\`[${new Date().toUTCString()}]\` <@!227477384356429824>, getting invalid request on endpoint \`${req.path}\`! \nBody: \`${JSON.stringify(req.rawBody)}\``
       })
     });
     return res.status(400).json({ 'error': 'Invalid body' });
