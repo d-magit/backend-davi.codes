@@ -8,8 +8,33 @@ const httpClient = new nitroHttpClient.NitroHttpClient();
 app.set('x-powered-by', false)
 
 // Processes and sends webhook. Set to listen for Ko-fi for now
-app.get('/wwwformhook', async (req, res) => {
-  const donation = JSON.parse(req.query.data);
+app.get('/finances/wwwformhook', async (req, res) => {
+  var isinvalid = false;
+  var errortype = null;
+
+  var donation = null;
+  try { donation = JSON.parse(req.query.data); } 
+  catch (e)  { isinvalid = true; }
+
+  var keys = [];
+  for(var key in donation) keys.push(key);
+  if ( JSON.stringify(keys) != 
+  JSON.stringify(['message_id','timestamp','type','is_public','from_name','message','amount','url','email','currency','is_subscription_payment','is_first_subscription_payment','kofi_transaction_id'])) 
+  { isinvalid = true; }
+
+  if (isinvalid) {
+    await httpClient.request('https://davi.codes/finances/privatehook', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: `\`[${new Date().toUTCString()}]\` Invalid request on endpoint \`${req.path}\`! \n\`${JSON.stringify(req.query)}\``
+      })
+    });
+    return res.status(400).json({ 'error': 'Invalid body' });
+  }
+
   const webhook = `https://davi.codes/finances/${donation.is_public ? 'publichook':'privatehook'}`
   const response = await httpClient.request(webhook, {
     method: 'POST',
